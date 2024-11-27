@@ -1,0 +1,23 @@
+{
+    "name": "AnalogFilter",
+    "version": "1.0.2",
+    "description": "Analog filter library, used to slow down the sampling rate of analog reads.",
+    "keywords": "analog, Arduino, filter",
+    "repository":
+    {
+      "type": "git",
+      "url": "https://github.com/ZanPekosak/AnalogFilter/"
+    },
+    "authors":
+    [
+      {
+        "name": "Zan Pekosak",
+        "email": "pekosak.zan@gmail.com",
+        "url": "https://github.com/ZanPekosak/",
+        "maintainer": true
+      }
+    ],
+    "license": "GNU",
+    "frameworks": "*",
+    "platforms": "*"
+  }
