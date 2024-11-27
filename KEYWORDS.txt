@@ -1,0 +1,47 @@
+#######################################
+# Syntax Coloring Map
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+A_FILTER	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+loop	KEYWORD2
+getData	KEYWORD2
+getCurrentDataPoint	KEYWORD2
+clearData	KEYWORD2
+sampleCountCpltCallback	KEYWORD2
+
+sampleAndStore	KEYWORD2
+calcAvg	KEYWORD2
+calcRunAvg	KEYWORD2
+isDataAvailable	KEYWORD2
+clearDataAvailable	KEYWORD2
+incrementWriteCounter	KEYWORD2
+incrementReadCounter	KEYWORD2
+incrementIterationCounter	KEYWORD2
+
+#######################################
+# Structures and enums (KEYWORD3)
+#######################################
+
+constructorError	KEYWORD3
+filterType	KEYWORD3
+
+######################################
+# Constants (LITERAL1)
+#######################################
+
+ENABLE_DEBUG	LITERAL1
+SIZE_OF_DATA_BUFFER	LITERAL1
+MIN_SAMPLE_TIME	LITERAL1
+MAX_SAMPLE_TIME	LITERAL1
+MIN_SAMPLE_CNT	LITERAL1
+MAX_SAMPLE_CNT	LITERAL1

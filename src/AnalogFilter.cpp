@@ -1,9 +1,7 @@
 #include "Arduino.h"
 #include "AnalogFilter.h"
-#include "AnalogFilterConfig.h"
 
-enum A_FILTER::constructorError _err = BLANK;    //  set up an enum to track if there was a constructor error
-enum A_FILTER::filterType _fTyp = NONE;           //  set default filter type enum
+filterType _fTyp = NONE;                                //  set default filter type enum
 
 A_FILTER::A_FILTER(uint8_t pin){
     _pin = pin;
@@ -14,7 +12,7 @@ A_FILTER::A_FILTER(uint8_t pin){
     _fTyp = AVERAGE;    //  set the default filter to averaging
 }
 
-A_FILTER::A_FILTER(uint8_t pin, uint16t sampleTime){
+A_FILTER::A_FILTER(uint8_t pin, uint16_t sampleTime){
     _pin = pin;
 
     if(sampleTime < MIN_SAMPLE_TIME){
@@ -34,7 +32,7 @@ A_FILTER::A_FILTER(uint8_t pin, uint16t sampleTime){
     _fTyp = AVERAGE;    //  set the default filter to averaging
 }
 
-A_FILTER::A_FILTER(uint8_t pin, uint16t sampleTime, uint8_t numSamples){
+A_FILTER::A_FILTER(uint8_t pin, uint16_t sampleTime, uint8_t numSamples){
     _pin = pin;
 
     if(sampleTime < MIN_SAMPLE_TIME){
@@ -64,7 +62,7 @@ A_FILTER::A_FILTER(uint8_t pin, uint16t sampleTime, uint8_t numSamples){
     _fTyp = AVERAGE;    //  set the default filter to averaging
 }
 
-A_FILTER::A_FILTER(uint8_t pin, uint16t sampleTime, uint8_t numSamples, filterType fType){
+A_FILTER::A_FILTER(uint8_t pin, uint16_t sampleTime, uint8_t numSamples, filterType fType){
     _pin = pin;
 
     if(sampleTime < MIN_SAMPLE_TIME){
@@ -103,14 +101,24 @@ A_FILTER::A_FILTER(uint8_t pin, uint16t sampleTime, uint8_t numSamples, filterTy
 void A_FILTER::begin(){
     pinMode(_pin, INPUT);
 
+    #ifdef ENABLE_DEBUG
+        Serial.print("Started analog filter on pin: ");
+        Serial.print(_pin);
+        Serial.print(", with sample time: ");
+        Serial.print(_sampleTime);
+        Serial.print(", for: ");
+        Serial.print(_numSamples);
+        Serial.print(" samples.\n");
+    #endif
+
     /*Print out the warnings if any were found*/
     if(_err != BLANK){
         #ifdef ENABLE_DEBUG
             Serial.print("Warning in parameter input in class constructor A_FILTER(). ");
-            Serial.print(   (err == MINSAMPLE) ? "Sample number less than configured minimum!" :
-                            (err == MAXSAMPLE) ? "Sample number greater than configured maximum!" :
-                            (err == MINSAMPTIME) ? "Sample time lower than configured minimum!" :
-                            (err == MAXSAMPTIME) ? "Sample time greater than configured maximum!" : "Unknown error!");
+            Serial.print(   (_err == MINSAMPLE) ? "Sample number less than configured minimum!" :
+                            (_err == MAXSAMPLE) ? "Sample number greater than configured maximum!" :
+                            (_err == MINSAMPTIME) ? "Sample time lower than configured minimum!" :
+                            (_err == MAXSAMPTIME) ? "Sample time greater than configured maximum!" : "Unknown error!");
             Serial.print(" In line: ");
             Serial.print(__LINE__);
             Serial.print("\n");
@@ -128,10 +136,11 @@ void A_FILTER::loop(){
 
         /*Only call the funtion if there is any data - it should be*/
         if(_fTyp == NONE && isDataAvailable()){
-            if(_iterationCounter >= _numSamples){
+            if(_iterationCounter >= _numSamples-1){
                 _iterationCounter = 0;              //  reset iteration counter
                 _fData = _data[_writeCounter];      //  return last data point stored
-                sampleCountCpltCallback(_fData);    //  call function and pass the value as parameter 
+                dataPoint = _fData;                 //  set publicly accessible var
+                sampleCountCpltCallback(_pin, _fData);    //  call function and pass the value as parameter 
                 clearDataAvailable();               //  data was read but counters don't yet match
             }
             else{
@@ -139,20 +148,22 @@ void A_FILTER::loop(){
             }
         }
         else if(_fTyp == AVERAGE && isDataAvailable()){
-            if(_iterationCounter >= _numSamples){
+            if(_iterationCounter >= _numSamples-1){
                 _iterationCounter = 0;              //  reset iteration counter
                 _fData = calcAvg();                 //  store data to variable;
-                sampleCountCpltCallback(_fData);    //  call function and pass the value as parameter 
+                dataPoint = _fData;                 //  set publicly accessible var
+                sampleCountCpltCallback(_pin, _fData);    //  call function and pass the value as parameter 
             }
             else{
                 incrementIterationCounter();
             }
         }
         else if(_fTyp == RUN_AVG && isDataAvailable()){
-            if(_iterationCounter >= _numSamples){
+            if(_iterationCounter >= _numSamples-1){
                 _iterationCounter = 0;              //  reset iteration counter
                 _fData = calcRunAvg();              //  store data to variable;
-                sampleCountCpltCallback(_fData);    //  call function and pass the value as parameter 
+                dataPoint = _fData;                 //  set publicly accessible var
+                sampleCountCpltCallback(_pin, _fData);    //  call function and pass the value as parameter 
             }
             else{
                 incrementIterationCounter();
@@ -181,10 +192,14 @@ void A_FILTER::clearData(){
     #endif
 }
 
+void A_FILTER::sampleCountCpltCallback(uint8_t pin, int32_t filteredData){
+
+}
+
 void A_FILTER::sampleAndStore(){
-    _data[_writeCounter] = analogRead(pin);       //  store in buffer and increment counter
+    _data[_writeCounter] = analogRead(_pin);       //  store in buffer and increment counter
     incrementWriteCounter();
-    incrementIterationCounter();
+    //incrementIterationCounter();
 }
 
 int32_t A_FILTER::calcAvg(){
@@ -228,7 +243,7 @@ int32_t A_FILTER::calcRunAvg(){
 }
 
 bool A_FILTER::isDataAvailable(){
-    return ((_writeCounter - _readCounter) > 0);    //  checks for a difference between the read and write counters
+    return ((uint16_t)(_writeCounter - _readCounter) > 0);    //  checks for a difference between the read and write counters
 }
 
 void A_FILTER::clearDataAvailable(){
@@ -239,13 +254,13 @@ uint8_t A_FILTER::incrementWriteCounter(){
     _writeCounter++;
     if(_writeCounter > (MAX_SAMPLE_CNT-1))  //  wrap around handling
         _writeCounter = 0;
-    if((_writeCounter - _readCounter) < 0){ //  error reporting if the read counter goes beyond the write counter
-        #ifdef ENABLE_DEBUG
-            Serial.print("Write counter has exceeded write counter! In line: ");
-            Serial.print(__LINE__);
-            Serial.print("\n");
-        #endif
-    }
+     if((uint16_t)(_writeCounter - _readCounter) < 0){ //  error reporting if the read counter goes beyond the write counter
+         #ifdef ENABLE_DEBUG
+             Serial.print("Read counter has exceeded write counter! In line: ");
+             Serial.print(__LINE__);
+             Serial.print("\n");
+         #endif
+     }
     return _writeCounter;
 }
 
@@ -253,13 +268,13 @@ uint8_t A_FILTER::incrementReadCounter(){
     _readCounter++;
     if(_readCounter > (MAX_SAMPLE_CNT-1))   //  wrap around handling
             _readCounter = 0;
-    if((_writeCounter - _readCounter) < 0){ //  error reporting if the read counter goes beyond the write counter
-        #ifdef ENABLE_DEBUG
-            Serial.print("Read counter has exceeded write counter! In line: ");
-            Serial.print(__LINE__);
-            Serial.print("\n");
-        #endif
-    }
+     if((uint16_t)(_writeCounter - _readCounter) < 0){ //  error reporting if the read counter goes beyond the write counter
+         #ifdef ENABLE_DEBUG
+             Serial.print("Read counter has exceeded write counter! In line: ");
+             Serial.print(__LINE__);
+             Serial.print("\n");
+         #endif
+     }
     return _readCounter;
 }
 
